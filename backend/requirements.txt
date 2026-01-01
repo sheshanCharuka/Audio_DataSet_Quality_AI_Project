@@ -1,0 +1,8 @@
+flask
+librosa
+soundfile
+numpy
+pandas
+tqdm
+noisereduce
+audiomentations
