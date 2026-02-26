@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio API Client</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 40px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h2 { color: #333; text-align: center; }
+        input[type="file"] { margin-bottom: 20px; width: 100%; padding: 10px; border: 1px dashed #ccc; }
+        button { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #999; cursor: not-allowed; }
+        .results { margin-top: 30px; display: none; padding: 20px; background: #e9ecef; border-radius: 5px; }
+        .download-btn { background: #28a745; margin-top: 20px; text-align: center; display: block; text-decoration: none; color: white; padding: 15px; border-radius: 5px;}
+        .download-btn:hover { background: #218838; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎧 Audio Dataset Optimizer API</h2>
+    <p>Upload your dataset. The API will train a baseline model, improve the audio, and return the new accuracy.</p>
+
+    <input type="file" id="datasetFiles" multiple accept=".wav, .mp3, .flac, .m4a">
+    
+    <button id="submitBtn" onclick="callAPI()">Upload & Process Data</button>
+    <p id="loadingText" style="display:none; text-align:center; color: #007bff; font-weight: bold;">Processing via API... this may take a minute.</p>
+
+    <div class="results" id="resultsBox">
+        <h3>📊 API Model Outputs:</h3>
+        <p><strong>Baseline Accuracy:</strong> <span id="outBase">0</span>%</p>
+        <p><strong>Improved Accuracy:</strong> <span id="outNew" style="color: green; font-weight: bold;">0</span>%</p>
+        <p><strong>Dataset Size Growth:</strong> <span id="outSize1">0</span> files ➔ <span id="outSize2">0</span> files</p>
+        
+        <a href="#" class="download-btn" id="downloadLink">Download Modified Dataset (.zip)</a>
+    </div>
+</div>
+
+<script>
+    // 👇 PASTE YOUR NGROK URL HERE 👇
+    const API_BASE_URL = "https://rochelle-expansible-reconstructively.ngrok-free.dev";
+
+    async function callAPI() {
+        const fileInput = document.getElementById('datasetFiles');
+        if (fileInput.files.length === 0) return alert("Please select files first!");
+
+        // 1. Prepare UI
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('loadingText').style.display = 'block';
+        document.getElementById('resultsBox').style.display = 'none';
+
+        // 2. Package the files into a FormData object
+        const formData = new FormData();
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append('dataset', fileInput.files[i]);
+        }
+
+        try {
+            // 3. CALL THE API (The crucial part!)
+            // We are using 'ngrok-skip-browser-warning' to bypass Ngrok's security screen
+            const response = await fetch(`${API_BASE_URL}/api/upload_and_process`, {
+                method: 'POST',
+                headers: { 'ngrok-skip-browser-warning': 'true' },
+                body: formData
+            });
+
+            // 4. Parse the JSON response from Python
+            const data = await response.json();
+
+            if(data.status === "Success") {
+                // 5. Update the UI with the Model Outputs
+                document.getElementById('outBase').innerText = data.baseline_accuracy;
+                document.getElementById('outNew').innerText = data.improved_accuracy;
+                document.getElementById('outSize1').innerText = data.original_file_count;
+                document.getElementById('outSize2').innerText = data.new_file_count;
+                
+                // 6. Set up the Download API link
+                document.getElementById('downloadLink').href = `${API_BASE_URL}/api/download_dataset`;
+                
+                // Show the results box
+                document.getElementById('resultsBox').style.display = 'block';
+            } else {
+                alert("API Error: " + data.status);
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("Failed to connect to the API. Is your Colab server running?");
+        } finally {
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('loadingText').style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>
